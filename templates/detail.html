@@ -67,6 +67,7 @@
 <script>
 let cpuChart = echarts.init(document.getElementById('cpu-chart'));
 let memoryChart = echarts.init(document.getElementById('memory-chart'));
+let baseUrl = location.href.split('containers')[0];
 
 function setChartOptions(chart, title, yAxisLabel) {
     return {
@@ -83,7 +84,7 @@ memoryChart.setOption(setChartOptions(memoryChart, 'Memory Usage', 'MB'));
 
 function fetchData(timeRange = '30m') {
     $.ajax({
-        url: `/api/containers/{{ container_id }}/stats?time_range=${timeRange}`,
+        url: baseUrl + `api/containers/{{ container_id }}/stats?time_range=${timeRange}`,
         success: function(data) {
             updateChart(cpuChart, data.timestamps, data.cpu_usage);
             updateChart(memoryChart, data.timestamps, data.memory_usage);
@@ -104,7 +105,7 @@ function updateChart(chart, categories, data) {
 function fetchLogs() {
     var logsContainer = document.getElementById('logs');
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', `/api/containers/{{ container_id }}/logs`);
+    xhr.open('GET', baseUrl + `api/containers/{{ container_id }}/logs`);
     xhr.send();
     var position = 0;
 
@@ -130,7 +131,7 @@ function fetchLogs() {
 function toggleContainer() {
     const action = document.getElementById('container-status').textContent === 'running' ? 'stop' : 'start';
     $.ajax({
-        url: `/api/containers/{{ container_id }}/${action}`,
+        url: baseUrl + `api/containers/{{ container_id }}/${action}`,
         method: 'POST',
         success: function() {
             const button = document.getElementById('toggle-button');
@@ -153,7 +154,7 @@ function toggleContainer() {
 
 function fetchContainerInfo() {
     $.ajax({
-        url: `/api/containers/{{ container_id }}`,
+        url: baseUrl + `api/containers/{{ container_id }}`,
         method: 'GET',
         success: function(data) {
             $('#container-name').text(data.name);

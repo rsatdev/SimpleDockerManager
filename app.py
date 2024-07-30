@@ -2,6 +2,8 @@ from flask import Flask, render_template
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 from docker import DockerClient
+
+from helpers.prefix_helper import PrefixMiddleware
 from models.container_stat import db, ContainerStat, init_db
 from blueprints.containers import bp as containers_bp, calculate_cpu_percent
 from helpers.logging_helper import setup_logging
@@ -14,10 +16,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///simple.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-app_path = os.getenv('APP_PATH')
-if app_path:
-    app.config['APPLICATION_ROOT'] = app_path
+app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix=os.getenv('APP_PATH', '/'))
 
 db.init_app(app)
 

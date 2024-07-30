@@ -93,7 +93,7 @@ function formatBytes(bytes) {
 
 function updateContainerList() {
     $.ajax({
-        url: '/api/containers',
+        url: 'api/containers',
         success: function(data) {
             let containerList = '';
             for (let project in data) {
@@ -116,7 +116,7 @@ function updateContainerList() {
                             <td>${project}</td>
                             <td>${container.status}</td>
                             <td>
-                                <a href="/containers/${container.id}" class="btn btn-primary"><i class="fas fa-info-circle"></i> Details</a>
+                                <a href="containers/${container.id}" class="btn btn-primary"><i class="fas fa-info-circle"></i> Details</a>
                                 ${container.status === 'running' ? `
                                 <button class="btn btn-danger" onclick="toggleContainer('${container.id}', 'stop', this)"><i class="fas fa-stop-circle"></i> Stop</button>` : `
                                 <button class="btn btn-success" onclick="toggleContainer('${container.id}', 'start', this)"><i class="fas fa-play-circle"></i> Start</button>`}
@@ -134,7 +134,7 @@ function updateContainerList() {
 function toggleContainer(containerId, action, button) {
     $(button).html('<i class="fas fa-spinner fa-spin"></i>');
     $.ajax({
-        url: `/api/containers/${containerId}/${action}`,
+        url: `api/containers/${containerId}/${action}`,
         type: 'POST',
         success: function() {
             updateContainerList();
