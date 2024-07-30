@@ -42,7 +42,7 @@ def collect_stats():
 def delete_old_stats():
     with app.app_context():
         logger.info('Deleting old stats')
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        one_week_ago = datetime.utcnow() - timedelta(days=1)
         deleted_count = ContainerStat.query.filter(ContainerStat.timestamp < one_week_ago).delete()
         db.session.commit()
         logger.info(f'Deleted {deleted_count} old stats')
