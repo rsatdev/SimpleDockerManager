@@ -2,6 +2,10 @@
 
 SimpleDockerManager is a lightweight, web-based application for managing Docker containers, inspired by Dozzle. It allows you to monitor and manage Docker containers with ease, providing real-time insights into container performance metrics such as CPU and memory usage.
 
+## Screenshots
+[![Screenshot-2024-07-30-124054.png](https://i.postimg.cc/432VXsqt/Screenshot-2024-07-30-124054.png)](https://postimg.cc/B8DXg9qQ)
+[![Screenshot-2024-07-30-124157.png](https://i.postimg.cc/CxYjNvbZ/Screenshot-2024-07-30-124157.png)](https://postimg.cc/bsCDY9C8)
+
 ## Features
 
 - List Docker containers grouped by Docker Compose projects
