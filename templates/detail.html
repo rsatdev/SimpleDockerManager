@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-box"></i> Container Detail</h1>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <table class="table table-bordered table-dark">
+                <tr>
+                    <th>Name</th>
+                    <td id="container-name"></td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td id="container-status"></td>
+                </tr>
+                <tr>
+                    <th>Action</th>
+                    <td>
+                        <button id="toggle-button" class="btn" onclick="toggleContainer()"><i class="fas fa-play-circle"></i> Start/Stop</button>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Network</th>
+                    <td id="container-network"></td>
+                </tr>
+                <tr>
+                    <th>Environment</th>
+                    <td><ul id="container-environment"></ul></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="row my-3">
+        <div class="col-md-12">
+            <select id="time-range" class="form-select">
+                <option value="30m">Last 30 minutes</option>
+                <option value="1h">Last 1 hour</option>
+                <option value="2h">Last 2 hours</option>
+                <option value="3h">Last 3 hours</option>
+                <option value="6h">Last 6 hours</option>
+                <option value="12h">Last 12 hours</option>
+                <option value="1d">Last 1 day</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3><i class="fas fa-microchip"></i> CPU Usage</h3>
+            <div id="cpu-chart" style="height: 400px;"></div>
+        </div>
+        <div class="col-md-6">
+            <h3><i class="fas fa-memory"></i> Memory Usage</h3>
+            <div id="memory-chart" style="height: 400px;"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <h3><i class="fas fa-file-alt"></i> Logs</h3>
+            <div id="logs" class="console bg-dark text-white p-3" style="height: 300px; overflow-y: scroll; font-family: monospace;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let cpuChart = echarts.init(document.getElementById('cpu-chart'));
+let memoryChart = echarts.init(document.getElementById('memory-chart'));
+
+function setChartOptions(chart, title, yAxisLabel) {
+    return {
+        title: { text: title, textStyle: { color: '#fff' } },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', boundaryGap: false, data: [], axisLabel: { color: '#fff' }, axisLine: { lineStyle: { color: '#fff' } } },
+        yAxis: { type: 'value', name: yAxisLabel, axisLabel: { color: '#fff' }, axisLine: { lineStyle: { color: '#fff' } } },
+        series: [{ type: 'line', areaStyle: {}, data: [] }]
+    };
+}
+
+cpuChart.setOption(setChartOptions(cpuChart, 'CPU Usage', '%'));
+memoryChart.setOption(setChartOptions(memoryChart, 'Memory Usage', 'MB'));
+
+function fetchData(timeRange = '30m') {
+    $.ajax({
+        url: `/api/containers/{{ container_id }}/stats?time_range=${timeRange}`,
+        success: function(data) {
+            updateChart(cpuChart, data.timestamps, data.cpu_usage);
+            updateChart(memoryChart, data.timestamps, data.memory_usage);
+        },
+        error: function(xhr, status, error) {
+            console.error('Failed to fetch data', xhr, status, error);
+        }
+    });
+}
+
+function updateChart(chart, categories, data) {
+    chart.setOption({
+        xAxis: { data: categories },
+        series: [{ data: data }]
+    });
+}
+
+function fetchLogs() {
+    var logsContainer = document.getElementById('logs');
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', `/api/containers/{{ container_id }}/logs`);
+    xhr.send();
+    var position = 0;
+
+    function handleNewData() {
+        var messages = xhr.responseText.split('\n');
+        messages.slice(position, -1).forEach(function(value) {
+            var logEntry = document.createElement('div');
+            logEntry.textContent = value;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        });
+        position = messages.length - 1;
+    }
+
+    var timer = setInterval(function() {
+        handleNewData();
+        if (xhr.readyState == XMLHttpRequest.DONE) {
+            clearInterval(timer);
+        }
+    }, 1000);
+}
+
+function toggleContainer() {
+    const action = document.getElementById('container-status').textContent === 'running' ? 'stop' : 'start';
+    $.ajax({
+        url: `/api/containers/{{ container_id }}/${action}`,
+        method: 'POST',
+        success: function() {
+            const button = document.getElementById('toggle-button');
+            if (action === 'stop') {
+                button.classList.remove('btn-success');
+                button.classList.add('btn-danger');
+                button.innerHTML = '<i class="fas fa-play-circle"></i> Start';
+            } else {
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-success');
+                button.innerHTML = '<i class="fas fa-stop-circle"></i> Stop';
+            }
+            document.getElementById('container-status').textContent = action === 'stop' ? 'stopped' : 'running';
+        },
+        error: function(xhr, status, error) {
+            console.error(`Failed to ${action} container`, xhr, status, error);
+        }
+    });
+}
+
+function fetchContainerInfo() {
+    $.ajax({
+        url: `/api/containers/{{ container_id }}`,
+        method: 'GET',
+        success: function(data) {
+            $('#container-name').text(data.name);
+            $('#container-status').text(data.status);
+            const button = $('#toggle-button');
+            if (data.status === 'running') {
+                button.removeClass('btn-success').addClass('btn-danger').html('<i class="fas fa-stop-circle"></i> Stop');
+            } else {
+                button.removeClass('btn-danger').addClass('btn-success').html('<i class="fas fa-play-circle"></i> Start');
+            }
+            $('#container-network').text(JSON.stringify(data.ports));
+            $('#container-environment').empty();
+            data.environment.forEach(function(env) {
+                $('#container-environment').append('<li>' + env + '</li>');
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Failed to fetch container info', xhr, status, error);
+        }
+    });
+}
+
+$(document).ready(function() {
+    fetchContainerInfo();
+    fetchData();  // Default time range is '30m'
+    $('#time-range').change(function() {
+        fetchData($(this).val());
+    });
+    setInterval(fetchData, 60000); // Update every 1 minute
+    fetchLogs();
+});
+</script>
+{% endblock %}

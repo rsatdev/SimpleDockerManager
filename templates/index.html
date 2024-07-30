@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-boxes"></i> Container Dashboard</h1>
+<div class="text-center">
+    <div id="loading-skeleton">
+        <div class="skeleton-container">
+            <div class="skeleton-row">
+                <div class="skeleton-bar" style="width: 20%;"></div>
+                <div class="skeleton-bar" style="width: 15%;"></div>
+                <div class="skeleton-bar" style="width: 20%;"></div>
+                <div class="skeleton-bar" style="width: 10%;"></div>
+                <div class="skeleton-bar" style="width: 10%;"></div>
+                <div class="skeleton-bar" style="width: 10%;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .progress {
+        background-color: #6c757d;
+        position: relative;
+        height: 30px;
+    }
+    .progress-bar {
+        background-color: #007bff !important;
+        color: #fff;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        position: relative;
+    }
+    .progress-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    .table-header {
+        display: none;
+    }
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0,0,0,.05);
+    }
+    .table-dark.table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(255,255,255,.05);
+    }
+    .skeleton-container {
+        width: 100%;
+    }
+    .skeleton-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    .skeleton-bar {
+        height: 20px;
+        background-color: #444;
+        border-radius: 4px;
+    }
+    .hiddenRow {
+        padding: 0 !important;
+    }
+</style>
+<table class="table table-striped table-dark">
+    <thead class="table-header">
+        <tr>
+            <th><i class="fas fa-box"></i> Name</th>
+            <th><i class="fas fa-microchip"></i> CPU Usage</th>
+            <th><i class="fas fa-memory"></i> Memory Usage</th>
+            <th><i class="fas fa-layer-group"></i> Stack/Group</th>
+            <th><i class="fas fa-info-circle"></i> Status</th>
+            <th><i class="fas fa-tools"></i> Actions</th>
+        </tr>
+    </thead>
+    <tbody id="container-list">
+    </tbody>
+</table>
+
+<script>
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function updateContainerList() {
+    $.ajax({
+        url: '/api/containers',
+        success: function(data) {
+            let containerList = '';
+            for (let project in data) {
+                data[project].forEach(container => {
+                    containerList += `
+                        <tr>
+                            <td><i class="fas fa-box"></i> ${container.name}</td>
+                            <td>
+                                <div class="progress">
+                                    <div class="progress-text">${container.cpu_percentage.toFixed(2)}%</div>
+                                    <div class="progress-bar" role="progressbar" style="width: ${container.cpu_percentage}%" aria-valuenow="${container.cpu_percentage}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="progress">
+                                    <div class="progress-text">${formatBytes(container.memory_usage)} / ${formatBytes(container.memory_limit)}</div>
+                                    <div class="progress-bar bg-info" role="progressbar" style="width: ${(container.memory_usage / container.memory_limit) * 100}%" aria-valuenow="${(container.memory_usage / container.memory_limit) * 100}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </td>
+                            <td>${project}</td>
+                            <td>${container.status}</td>
+                            <td>
+                                <a href="/containers/${container.id}" class="btn btn-primary"><i class="fas fa-info-circle"></i> Details</a>
+                                ${container.status === 'running' ? `
+                                <button class="btn btn-danger" onclick="toggleContainer('${container.id}', 'stop', this)"><i class="fas fa-stop-circle"></i> Stop</button>` : `
+                                <button class="btn btn-success" onclick="toggleContainer('${container.id}', 'start', this)"><i class="fas fa-play-circle"></i> Start</button>`}
+                            </td>
+                        </tr>`;
+                });
+            }
+            $('#container-list').html(containerList);
+            $('#loading-skeleton').hide();
+            $('.table-header').show();
+        }
+    });
+}
+
+function toggleContainer(containerId, action, button) {
+    $(button).html('<i class="fas fa-spinner fa-spin"></i>');
+    $.ajax({
+        url: `/api/containers/${containerId}/${action}`,
+        type: 'POST',
+        success: function() {
+            updateContainerList();
+        },
+        error: function() {
+            alert(`Failed to ${action} container.`);
+            updateContainerList();
+        }
+    });
+}
+
+$(document).ready(function() {
+    $('#loading-skeleton').show();
+    updateContainerList();
+    setInterval(updateContainerList, 5000);
+});
+</script>
+{% endblock %}
